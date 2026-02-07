@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
+import UserSettings from './components/UserSettings';
+import VersionHistory from './components/VersionHistory';
 
 interface PatientData {
   age: string;
@@ -499,6 +501,20 @@ export default function Home() {
   const [selectedBed, setSelectedBed] = useState<number | null>(null);
   const [bedData, setBedData] = useState<Record<number, PatientData>>({});
   const [savedIndicators, setSavedIndicators] = useState<Record<number, boolean>>({});
+  
+  // New states for version history and settings
+  const [showSettings, setShowSettings] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [currentShift, setCurrentShift] = useState<string>('AM');
+  const [nurseName, setNurseName] = useState<string>('');
+  const [userSettings, setUserSettings] = useState({
+    showVersionHistory: true,
+    showShiftColors: true,
+    highlightChanges: true,
+    compactMode: false,
+    notifyOnChanges: true
+  });
+  const [bedVersions, setBedVersions] = useState<Record<number, any[]>>({});
 
   useEffect(() => {
     const savedTeam = localStorage.getItem('selectedTeam');
@@ -660,10 +676,76 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <div className="max-w-7xl mx-auto">
         <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
-          <div className="px-8 py-6">
-            <h1 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Nursing Handover System</h1>
+          <div className="px-8 py-4">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Nursing Handover System</h1>
+              <div className="flex items-center gap-4">
+                {/* Nurse Name Input */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">👤</span>
+                  <input
+                    type="text"
+                    value={nurseName}
+                    onChange={(e) => {
+                      setNurseName(e.target.value);
+                      localStorage.setItem('nurseName', e.target.value);
+                    }}
+                    placeholder="護士名"
+                    className="w-24 px-2 py-1.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-gray-900"
+                  />
+                </div>
+                {/* Shift Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">🕐</span>
+                  <select
+                    value={currentShift}
+                    onChange={(e) => {
+                      setCurrentShift(e.target.value);
+                      localStorage.setItem('currentShift', e.target.value);
+                    }}
+                    className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                      currentShift === 'AM' ? 'bg-yellow-50 border-yellow-300 text-yellow-900' :
+                      currentShift === 'PM' ? 'bg-blue-50 border-blue-300 text-blue-900' :
+                      'bg-purple-50 border-purple-300 text-purple-900'
+                    }`}
+                  >
+                    <option value="AM">🌅 AM 早更</option>
+                    <option value="PM">☀️ PM 下午更</option>
+                    <option value="Night">🌙 Night 夜更</option>
+                  </select>
+                </div>
+                {/* Settings Button */}
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="設定"
+                >
+                  ⚙️
+                </button>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <UserSettings
+            settings={userSettings}
+            onUpdate={(newSettings) => {
+              setUserSettings(newSettings);
+              localStorage.setItem('userSettings', JSON.stringify(newSettings));
+            }}
+            onClose={() => setShowSettings(false)}
+          />
+        )}
+
+        {/* Version History Modal */}
+        {showVersionHistory && selectedBed && (
+          <VersionHistory
+            versions={bedVersions[selectedBed] || []}
+            onClose={() => setShowVersionHistory(false)}
+          />
+        )}
 
         {view === 'team-select' && (
           <div className="p-8">
