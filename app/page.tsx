@@ -74,7 +74,9 @@ const BedCard = memo(({
   onSave, 
   onClear, 
   onBack,
-  savedIndicator 
+  onShowVersionHistory,
+  savedIndicator,
+  showVersionHistoryButton
 }: { 
   bed: number;
   data: PatientData;
@@ -82,7 +84,9 @@ const BedCard = memo(({
   onSave: (bed: number) => void;
   onClear: (bed: number) => void;
   onBack: () => void;
+  onShowVersionHistory: () => void;
   savedIndicator: boolean;
+  showVersionHistoryButton: boolean;
 }) => {
   const [showComplaintsMenu, setShowComplaintsMenu] = useState(false);
   const [selectedComplaints, setSelectedComplaints] = useState<string[]>([]);
@@ -474,6 +478,15 @@ const BedCard = memo(({
             >
               Save
             </button>
+            {showVersionHistoryButton && (
+              <button
+                onClick={onShowVersionHistory}
+                className="px-6 py-3 bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium rounded-lg transition-colors"
+                title="查看版本歷史"
+              >
+                📜
+              </button>
+            )}
             <button
               onClick={() => onClear(bed)}
               className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
@@ -940,7 +953,9 @@ export default function Home() {
               onSave={saveBedData}
               onClear={clearBedData}
               onBack={backToBedList}
+              onShowVersionHistory={() => setShowVersionHistory(true)}
               savedIndicator={savedIndicators[selectedBed] || false}
+              showVersionHistoryButton={userSettings.showVersionHistory}
             />
           </div>
         )}
