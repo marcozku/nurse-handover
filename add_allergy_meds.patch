@@ -1,0 +1,7 @@
+--- Add Drug Allergy and Private Medications fields ---
+
+1. Add toggle functions after line 140 (after addSelectedComplaints)
+2. Add UI sections in BedCard after complaints section
+3. Update getDefaultData to include new fields
+4. Update bed list display to show allergy/meds indicators
+
