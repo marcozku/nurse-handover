@@ -689,10 +689,10 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <div className="max-w-7xl mx-auto">
         <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
-          <div className="px-8 py-4">
+          <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Nursing Handover System</h1>
-              <div className="flex items-center gap-4">
+              <h1 className="text-xl sm:text-2xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Nursing Handover System</h1>
+              <div className="flex items-center gap-2 sm:gap-4">
                 {/* Nurse Name Input */}
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">👤</span>
@@ -843,7 +843,7 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-6 gap-2 mb-4">
+                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5 sm:gap-2 mb-4">
                       {teamBeds[team].map(bed => {
                         const data = bedData[bed];
                         const gender = data?.gender;
@@ -899,7 +899,7 @@ export default function Home() {
                 ← Back
               </button>
             </div>
-            <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-10 gap-3 mb-8">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2 sm:gap-3 mb-8">
               {teamBeds[selectedTeam].map(bed => {
                 const data = bedData[bed];
                 const gender = data?.gender;
