@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Patient {
+  id        String   @id @default(cuid())
+  name      String
+  bedNumber String   @map("bed_number")
+  mrn       String?  @unique // Medical Record Number
+  age       Int?
+  gender    String?
+  
+  // Medical Info
+  diagnosis String?
+  allergies String[] // Array of drug allergies
+  
+  // Medications
+  medications Medication[]
+  
+  // Handover Info
+  handovers Handover[]
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("patients")
+}
+
+model Medication {
+  id          String   @id @default(cuid())
+  patientId   String   @map("patient_id")
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  name        String
+  dosage      String
+  frequency   String
+  route       String?  // oral, IV, IM, etc.
+  isPrivate   Boolean  @default(false) @map("is_private") // Private medication flag
+  
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("medications")
+}
+
+model Handover {
+  id          String   @id @default(cuid())
+  patientId   String   @map("patient_id")
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  shift       String   // AM, PM, Night
+  date        DateTime
+  
+  // Handover Details
+  vitalSigns  String?  @map("vital_signs")
+  assessment  String?
+  plan        String?
+  concerns    String?
+  
+  // Nurse Info
+  nurseFrom   String?  @map("nurse_from")
+  nurseTo     String?  @map("nurse_to")
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("handovers")
+}
