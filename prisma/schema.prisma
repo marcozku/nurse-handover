@@ -27,10 +27,33 @@ model Patient {
   // Handover Info
   handovers Handover[]
   
+  // Version History
+  versions PatientVersion[]
+  
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
   
   @@map("patients")
+}
+
+model PatientVersion {
+  id          String   @id @default(cuid())
+  patientId   String   @map("patient_id")
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  // Snapshot of patient data at this version
+  data        Json     // Complete patient data snapshot
+  
+  // Change metadata
+  shift       String   // AM, PM, Night
+  changedBy   String   @map("changed_by") // Nurse name
+  changeType  String   @map("change_type") // created, updated, deleted
+  changes     Json?    // Specific fields changed (diff)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@map("patient_versions")
+  @@index([patientId, createdAt])
 }
 
 model Medication {
@@ -71,8 +94,50 @@ model Handover {
   nurseFrom   String?  @map("nurse_from")
   nurseTo     String?  @map("nurse_to")
   
+  // Version History
+  versions HandoverVersion[]
+  
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   
   @@map("handovers")
+}
+
+model HandoverVersion {
+  id          String   @id @default(cuid())
+  handoverId  String   @map("handover_id")
+  handover    Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
+  
+  // Snapshot of handover data at this version
+  data        Json     // Complete handover data snapshot
+  
+  // Change metadata
+  shift       String   // AM, PM, Night
+  changedBy   String   @map("changed_by") // Nurse name
+  changeType  String   @map("change_type") // created, updated, deleted
+  changes     Json?    // Specific fields changed (diff)
+  
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@map("handover_versions")
+  @@index([handoverId, createdAt])
+}
+
+model UserSettings {
+  id                    String   @id @default(cuid())
+  userId                String   @unique @map("user_id") // Nurse ID or username
+  
+  // Display Settings
+  showVersionHistory    Boolean  @default(true) @map("show_version_history")
+  showShiftColors       Boolean  @default(true) @map("show_shift_colors")
+  highlightChanges      Boolean  @default(true) @map("highlight_changes")
+  compactMode           Boolean  @default(false) @map("compact_mode")
+  
+  // Notification Settings
+  notifyOnChanges       Boolean  @default(true) @map("notify_on_changes")
+  
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  
+  @@map("user_settings")
 }
