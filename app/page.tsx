@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import UserSettings from './components/UserSettings';
 import VersionHistory from './components/VersionHistory';
-import { getBedData, saveBedData as saveBedDataAction, getBedVersions, clearBedData as clearBedDataAction } from './actions/bed-actions';
+import { saveVersionEntry, getBedVersions, clearBedVersions, type VersionEntry } from './lib/version-storage';
 
 interface PatientData {
   age: string;
@@ -552,26 +552,16 @@ export default function Home() {
       setUserSettings(JSON.parse(savedSettings));
     }
 
-    // Load all beds data from database on mount
-    const loadAllBedsData = async () => {
-      try {
-        const allBeds = Object.values(teamBeds).flat();
-        const loadedData: Record<number, PatientData> = {};
-
-        for (const bed of allBeds) {
-          const data = await getBedData(bed.toString());
-          if (data && (data.age || data.gender || data.complaints)) {
-            loadedData[bed] = data;
-          }
-        }
-
-        setBedData(loadedData);
-      } catch (error) {
-        console.error('Error loading beds data:', error);
+    // Load all beds data from localStorage on mount
+    const allBeds = Object.values(teamBeds).flat();
+    const loadedData: Record<number, PatientData> = {};
+    allBeds.forEach(bed => {
+      const data = localStorage.getItem(`bed-${bed}`);
+      if (data) {
+        loadedData[bed] = JSON.parse(data);
       }
-    };
-
-    loadAllBedsData();
+    });
+    setBedData(loadedData);
   }, []);
 
   const selectTeam = useCallback((team: number) => {
@@ -581,17 +571,13 @@ export default function Home() {
     localStorage.setItem('selectedTeam', team.toString());
   }, []);
 
-  const selectBed = useCallback(async (bed: number) => {
+  const selectBed = useCallback((bed: number) => {
     setSelectedBed(bed);
     setView('bed-detail');
 
     // Load version history for this bed
-    try {
-      const versions = await getBedVersions(bed.toString());
-      setBedVersions(prev => ({ ...prev, [bed]: versions }));
-    } catch (error) {
-      console.error('Error loading version history:', error);
-    }
+    const versions = getBedVersions(bed);
+    setBedVersions(prev => ({ ...prev, [bed]: versions }));
   }, []);
 
   const backToBedList = useCallback(() => {
@@ -629,50 +615,46 @@ export default function Home() {
     }));
   }, []);
 
-  const saveBedData = useCallback(async (bed: number) => {
+  const saveBedData = useCallback((bed: number) => {
     const data = bedData[bed];
     if (data) {
-      try {
-        const result = await saveBedDataAction(
-          bed.toString(),
-          data,
-          nurseName || 'Unknown',
-          currentShift
-        );
+      // Save to localStorage
+      localStorage.setItem(`bed-${bed}`, JSON.stringify(data));
 
-        if (result.success) {
-          setSavedIndicators(prev => ({ ...prev, [bed]: true }));
-          setTimeout(() => {
-            setSavedIndicators(prev => ({ ...prev, [bed]: false }));
-          }, 2000);
-        } else {
-          alert('保存失敗，請重試');
-        }
-      } catch (error) {
-        console.error('Error saving bed data:', error);
-        alert('保存失敗，請檢查網絡連接');
-      }
+      // Save version history
+      const existingData = bedData[bed];
+      const hasExistingData = existingData && (existingData.age || existingData.gender || existingData.complaints);
+      const changeType = hasExistingData ? 'updated' : 'created';
+
+      saveVersionEntry(
+        bed,
+        data,
+        nurseName || 'Unknown',
+        currentShift,
+        changeType
+      );
+
+      // Update versions state
+      const versions = getBedVersions(bed);
+      setBedVersions(prev => ({ ...prev, [bed]: versions }));
+
+      // Show saved indicator
+      setSavedIndicators(prev => ({ ...prev, [bed]: true }));
+      setTimeout(() => {
+        setSavedIndicators(prev => ({ ...prev, [bed]: false }));
+      }, 2000);
     }
   }, [bedData, nurseName, currentShift]);
 
-  const clearBedData = useCallback(async (bed: number) => {
+  const clearBedData = useCallback((bed: number) => {
     if (confirm(`Clear all data for Bed ${bed}?`)) {
-      try {
-        const result = await clearBedDataAction(bed.toString());
-
-        if (result.success) {
-          setBedData(prev => {
-            const newData = { ...prev };
-            delete newData[bed];
-            return newData;
-          });
-        } else {
-          alert('清除失敗，請重試');
-        }
-      } catch (error) {
-        console.error('Error clearing bed data:', error);
-        alert('清除失敗，請檢查網絡連接');
-      }
+      localStorage.removeItem(`bed-${bed}`);
+      clearBedVersions(bed);
+      setBedData(prev => {
+        const newData = { ...prev };
+        delete newData[bed];
+        return newData;
+      });
     }
   }, []);
 
