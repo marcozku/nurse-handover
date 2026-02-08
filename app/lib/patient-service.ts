@@ -1,14 +1,26 @@
 import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({
-  log: ['error', 'warn'],
-});
+let prisma: PrismaClient;
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+if (process.env.DATABASE_URL) {
+  // Production mode with connection pooling
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg(pool);
+  prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+} else {
+  // Development mode without adapter
+  prisma = globalForPrisma.prisma ?? new PrismaClient({
+    log: ['error', 'warn'],
+  });
+}
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisa = prisma;
 
 export interface PatientData {
   age?: string;
