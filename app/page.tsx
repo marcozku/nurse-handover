@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import UserSettings from './components/UserSettings';
 import VersionHistory from './components/VersionHistory';
+import { getBedData, saveBedData as saveBedDataAction, getBedVersions, clearBedData as clearBedDataAction } from './actions/bed-actions';
 
 interface PatientData {
   age: string;
@@ -558,12 +559,9 @@ export default function Home() {
         const loadedData: Record<number, PatientData> = {};
 
         for (const bed of allBeds) {
-          const response = await fetch(`/api/beds/${bed}`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.age || data.gender || data.complaints) {
-              loadedData[bed] = data;
-            }
+          const data = await getBedData(bed.toString());
+          if (data && (data.age || data.gender || data.complaints)) {
+            loadedData[bed] = data;
           }
         }
 
@@ -589,11 +587,8 @@ export default function Home() {
 
     // Load version history for this bed
     try {
-      const response = await fetch(`/api/beds/${bed}/versions`);
-      if (response.ok) {
-        const versions = await response.json();
-        setBedVersions(prev => ({ ...prev, [bed]: versions }));
-      }
+      const versions = await getBedVersions(bed.toString());
+      setBedVersions(prev => ({ ...prev, [bed]: versions }));
     } catch (error) {
       console.error('Error loading version history:', error);
     }
@@ -638,17 +633,14 @@ export default function Home() {
     const data = bedData[bed];
     if (data) {
       try {
-        const response = await fetch(`/api/beds/${bed}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            data,
-            nurseName: nurseName || 'Unknown',
-            shift: currentShift,
-          }),
-        });
+        const result = await saveBedDataAction(
+          bed.toString(),
+          data,
+          nurseName || 'Unknown',
+          currentShift
+        );
 
-        if (response.ok) {
+        if (result.success) {
           setSavedIndicators(prev => ({ ...prev, [bed]: true }));
           setTimeout(() => {
             setSavedIndicators(prev => ({ ...prev, [bed]: false }));
@@ -666,11 +658,9 @@ export default function Home() {
   const clearBedData = useCallback(async (bed: number) => {
     if (confirm(`Clear all data for Bed ${bed}?`)) {
       try {
-        const response = await fetch(`/api/beds/${bed}`, {
-          method: 'DELETE',
-        });
+        const result = await clearBedDataAction(bed.toString());
 
-        if (response.ok) {
+        if (result.success) {
           setBedData(prev => {
             const newData = { ...prev };
             delete newData[bed];
