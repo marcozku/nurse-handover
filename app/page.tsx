@@ -530,20 +530,50 @@ export default function Home() {
   const [bedVersions, setBedVersions] = useState<Record<number, any[]>>({});
 
   useEffect(() => {
+    // Load settings from localStorage
     const savedTeam = localStorage.getItem('selectedTeam');
     if (savedTeam) {
       setSelectedTeam(parseInt(savedTeam));
     }
 
-    const allBeds = Object.values(teamBeds).flat();
-    const loadedData: Record<number, PatientData> = {};
-    allBeds.forEach(bed => {
-      const data = localStorage.getItem(`bed-${bed}`);
-      if (data) {
-        loadedData[bed] = JSON.parse(data);
+    const savedNurseName = localStorage.getItem('nurseName');
+    if (savedNurseName) {
+      setNurseName(savedNurseName);
+    }
+
+    const savedShift = localStorage.getItem('currentShift');
+    if (savedShift) {
+      setCurrentShift(savedShift);
+    }
+
+    const savedSettings = localStorage.getItem('userSettings');
+    if (savedSettings) {
+      setUserSettings(JSON.parse(savedSettings));
+    }
+
+    // Load all beds data from database on mount
+    const loadAllBedsData = async () => {
+      try {
+        const allBeds = Object.values(teamBeds).flat();
+        const loadedData: Record<number, PatientData> = {};
+
+        for (const bed of allBeds) {
+          const response = await fetch(`/api/beds/${bed}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.age || data.gender || data.complaints) {
+              loadedData[bed] = data;
+            }
+          }
+        }
+
+        setBedData(loadedData);
+      } catch (error) {
+        console.error('Error loading beds data:', error);
       }
-    });
-    setBedData(loadedData);
+    };
+
+    loadAllBedsData();
   }, []);
 
   const selectTeam = useCallback((team: number) => {
@@ -553,9 +583,20 @@ export default function Home() {
     localStorage.setItem('selectedTeam', team.toString());
   }, []);
 
-  const selectBed = useCallback((bed: number) => {
+  const selectBed = useCallback(async (bed: number) => {
     setSelectedBed(bed);
     setView('bed-detail');
+
+    // Load version history for this bed
+    try {
+      const response = await fetch(`/api/beds/${bed}/versions`);
+      if (response.ok) {
+        const versions = await response.json();
+        setBedVersions(prev => ({ ...prev, [bed]: versions }));
+      }
+    } catch (error) {
+      console.error('Error loading version history:', error);
+    }
   }, []);
 
   const backToBedList = useCallback(() => {
@@ -593,25 +634,55 @@ export default function Home() {
     }));
   }, []);
 
-  const saveBedData = useCallback((bed: number) => {
+  const saveBedData = useCallback(async (bed: number) => {
     const data = bedData[bed];
     if (data) {
-      localStorage.setItem(`bed-${bed}`, JSON.stringify(data));
-      setSavedIndicators(prev => ({ ...prev, [bed]: true }));
-      setTimeout(() => {
-        setSavedIndicators(prev => ({ ...prev, [bed]: false }));
-      }, 2000);
-    }
-  }, [bedData]);
+      try {
+        const response = await fetch(`/api/beds/${bed}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data,
+            nurseName: nurseName || 'Unknown',
+            shift: currentShift,
+          }),
+        });
 
-  const clearBedData = useCallback((bed: number) => {
+        if (response.ok) {
+          setSavedIndicators(prev => ({ ...prev, [bed]: true }));
+          setTimeout(() => {
+            setSavedIndicators(prev => ({ ...prev, [bed]: false }));
+          }, 2000);
+        } else {
+          alert('保存失敗，請重試');
+        }
+      } catch (error) {
+        console.error('Error saving bed data:', error);
+        alert('保存失敗，請檢查網絡連接');
+      }
+    }
+  }, [bedData, nurseName, currentShift]);
+
+  const clearBedData = useCallback(async (bed: number) => {
     if (confirm(`Clear all data for Bed ${bed}?`)) {
-      localStorage.removeItem(`bed-${bed}`);
-      setBedData(prev => {
-        const newData = { ...prev };
-        delete newData[bed];
-        return newData;
-      });
+      try {
+        const response = await fetch(`/api/beds/${bed}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          setBedData(prev => {
+            const newData = { ...prev };
+            delete newData[bed];
+            return newData;
+          });
+        } else {
+          alert('清除失敗，請重試');
+        }
+      } catch (error) {
+        console.error('Error clearing bed data:', error);
+        alert('清除失敗，請檢查網絡連接');
+      }
     }
   }, []);
 
